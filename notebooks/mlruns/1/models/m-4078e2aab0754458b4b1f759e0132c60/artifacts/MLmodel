@@ -1,0 +1,24 @@
+artifact_path: file:c:/Users/Asus/Desktop/python-coding/customer churn/notebooks/mlruns/1/models/m-4078e2aab0754458b4b1f759e0132c60/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.13.9
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.7.2
+    skops_trusted_types:
+    - sklearn.linear_model._logistic.LogisticRegression
+mlflow_version: 3.14.0
+model_id: m-4078e2aab0754458b4b1f759e0132c60
+model_size_bytes: 9664
+model_uuid: m-4078e2aab0754458b4b1f759e0132c60
+prompts: null
+run_id: 2a0342e4e6b949ceb44bb187a6d73470
+utc_time_created: '2026-06-30 16:57:20.150173'
