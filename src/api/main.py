@@ -3,49 +3,38 @@
 Start with:
     uvicorn src.api.main:app --host 0.0.0.0 --port 8000
 
-POST /predict  ->  {"prediction": 0, "probability": 0.23, ...}
-GET  /health   ->  {"status": "ok"}
+Endpoints
+---------
+GET  /health                        - Service health + loaded model count
+GET  /models                        - List all trained models with metrics
+GET  /models/{model_name}           - Get one model's details
+POST /predict?model_name=CatBoost   - Predict churn for a customer
 """
 from __future__ import annotations
 
 import sys
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
-# Make src/ importable when running from project root
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException, Query
+from pydantic import BaseModel
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
-
-from config.config import MLFLOW_URI, REGISTRY_NAME
-from pipelines.inference_pipeline import InferencePipeline
 from utils.logger import get_logger
+from utils.model_store import list_models, load_model_by_name, load_registry
+from models.predict import predict_single
 
 logger = get_logger(__name__)
 
-@asynccontextmanager
-async def lifespan(application: FastAPI):
-    load_pipeline()
-    yield
-
-
-app = FastAPI(
-    title="Customer Churn Prediction API",
-    description="Predict whether a Telco customer will churn.",
-    version="1.0.0",
-    lifespan=lifespan,
-)
 
 # ---------------------------------------------------------------------------
-# Request / Response models
+# Schema
 # ---------------------------------------------------------------------------
 
 class CustomerFeatures(BaseModel):
-    """Raw customer features (pre-preprocessing)."""
     model_config = {
         "json_schema_extra": {
             "example": {
@@ -84,90 +73,129 @@ class CustomerFeatures(BaseModel):
 
 
 class PredictionResponse(BaseModel):
+    model_name: str
     prediction: int
     probability: float
     churn_label: str
     threshold: float
-    model_version: str
     timestamp: str
 
 
 # ---------------------------------------------------------------------------
-# Startup: load pipeline once
+# Lifespan
 # ---------------------------------------------------------------------------
 
-_pipeline: InferencePipeline | None = None
-_model_version: str = "unknown"
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    models = list_models()
+    if models:
+        logger.info("Model store loaded — %d model(s) available", len(models))
+        for m in models:
+            logger.info("  %-20s  ROC-AUC=%.4f  threshold=%.2f",
+                        m["model_name"], m["metrics"]["roc_auc"], m["threshold"])
+    else:
+        logger.warning("No trained models found in models/. Run the training pipeline first.")
+    yield
 
 
-def load_pipeline() -> None:
-    global _pipeline, _model_version
-
-    models_dir = Path(__file__).resolve().parents[2] / "models"
-    model_path = models_dir / "best_model.pkl"
-    pipe_path  = models_dir / "preprocessing_pipe.pkl"
-    thresh_path = models_dir / "threshold.txt"
-
-    # Load threshold if saved, otherwise default
-    threshold = 0.5
-    if thresh_path.exists():
-        threshold = float(thresh_path.read_text().strip())
-
-    # Prefer disk (works in Docker without MLflow artifact store access)
-    if model_path.exists() and pipe_path.exists():
-        _pipeline = InferencePipeline.from_disk(
-            model_path=model_path,
-            pipe_path=pipe_path,
-            threshold=threshold,
-        )
-        _model_version = "v1-disk"
-        logger.info("Loaded model from disk (threshold=%.2f)", threshold)
-        return
-
-    # Fallback: MLflow registry (works locally, not in Docker)
-    try:
-        _pipeline = InferencePipeline.from_mlflow(
-            registry_name=REGISTRY_NAME,
-            stage="Staging",
-            tracking_uri=MLFLOW_URI,
-            threshold=threshold,
-        )
-        _model_version = "Staging"
-        logger.info("Loaded model from MLflow registry")
-    except Exception as exc:
-        logger.error("No model found (%s). /predict will return 503.", exc)
+app = FastAPI(
+    title="Customer Churn Prediction API",
+    description=(
+        "Serve predictions from any trained churn model.\n\n"
+        "1. Train all models via the notebook or `scripts/train.py`\n"
+        "2. `GET /models` to see what's available\n"
+        "3. `POST /predict?model_name=CatBoost` to get a prediction"
+    ),
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
 
-@app.get("/health")
+@app.get("/health", summary="Health check")
 def health() -> dict:
+    models = list_models()
     return {
-        "status"       : "ok",
-        "model_loaded" : _pipeline is not None,
-        "model_version": _model_version,
+        "status"        : "ok",
+        "models_available": len(models),
+        "model_names"   : [m["model_name"] for m in models],
     }
 
 
-@app.post("/predict", response_model=PredictionResponse)
-def predict(features: CustomerFeatures) -> PredictionResponse:
-    if _pipeline is None:
-        raise HTTPException(status_code=503, detail="Model not loaded. Check server logs.")
+@app.get("/models", summary="List all trained models")
+def get_models() -> list[dict]:
+    """Returns all models sorted by Recall -> F1 -> ROC-AUC descending."""
+    models = list_models()
+    if not models:
+        raise HTTPException(
+            status_code=404,
+            detail="No trained models found. Run the training pipeline first.",
+        )
+    # Strip internal path fields
+    return [
+        {k: v for k, v in m.items() if k not in ("model_path", "pipe_path")}
+        for m in models
+    ]
 
-    raw = features.model_dump()
+
+@app.get("/models/{model_name}", summary="Get a specific model's details")
+def get_model(model_name: str) -> dict:
+    registry = load_registry()
+    if model_name not in registry:
+        available = list(registry.keys())
+        raise HTTPException(
+            status_code=404,
+            detail=f"Model '{model_name}' not found. Available: {available}",
+        )
+    entry = registry[model_name]
+    return {k: v for k, v in entry.items() if k not in ("model_path", "pipe_path")}
+
+
+@app.post("/predict", response_model=PredictionResponse, summary="Predict churn")
+def predict(
+    features: CustomerFeatures,
+    model_name: Optional[str] = Query(
+        default=None,
+        description="Name of the model to use (e.g. 'CatBoost'). "
+                    "Defaults to the best model by ROC-AUC. "
+                    "Call GET /models to see all options.",
+    ),
+) -> PredictionResponse:
+    # Default to best model if not specified
+    if model_name is None:
+        models = list_models()
+        if not models:
+            raise HTTPException(
+                status_code=503,
+                detail="No trained models available. Run the training pipeline first.",
+            )
+        model_name = models[0]["model_name"]
+        logger.debug("No model_name specified, defaulting to '%s'", model_name)
+
     try:
-        result = _pipeline.predict(raw)
+        model, preprocessing_pipe, threshold = load_model_by_name(model_name)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+    try:
+        result = predict_single(
+            model=model,
+            preprocessing_pipeline=preprocessing_pipe,
+            raw_features=features.model_dump(),
+            threshold=threshold,
+        )
     except Exception as exc:
-        logger.exception("Prediction error: %s", exc)
+        logger.exception("Prediction error for model '%s': %s", model_name, exc)
         raise HTTPException(status_code=500, detail=str(exc))
 
     return PredictionResponse(
-        prediction   = result["prediction"],
-        probability  = result["probability"],
-        churn_label  = result["churn_label"],
-        threshold    = result["threshold"],
-        model_version= _model_version,
-        timestamp    = datetime.now(timezone.utc).isoformat(),
+        model_name  = model_name,
+        prediction  = result["prediction"],
+        probability = result["probability"],
+        churn_label = result["churn_label"],
+        threshold   = result["threshold"],
+        timestamp   = datetime.now(timezone.utc).isoformat(),
     )

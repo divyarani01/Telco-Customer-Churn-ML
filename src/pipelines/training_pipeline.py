@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import matplotlib.pyplot as plt
 
+from utils.model_store import save_model
 from models.evaluate import (
     build_leaderboard,
     evaluate_model,
@@ -45,6 +46,8 @@ def run_model_workflow(
     cv: int = CV_FOLDS,
     refine_grid: dict | None = None,
     feature_names: list[str] | None = None,
+    preprocessing_pipe=None,
+    model_type: str = "tree",
 ) -> dict:
     """Full training-evaluation cycle for a single model.
 
@@ -96,7 +99,7 @@ def run_model_workflow(
     print(f"  Optimal threshold : {best_t}  ->  F1: {opt['f1']}")
     print(classification_report(y_te, opt["y_pred"], target_names=["No Churn", "Churn"]))
 
-    return {
+    result = {
         "Model"          : name,
         "Accuracy"       : opt["accuracy"],
         "Precision"      : opt["precision"],
@@ -111,3 +114,14 @@ def run_model_workflow(
         "_y_proba"       : opt["y_proba"],
         "_y_pred"        : opt["y_pred"],
     }
+
+    # Auto-save to disk so the API can serve this model immediately
+    if preprocessing_pipe is not None:
+        save_model(
+            model=best_model,
+            preprocessing_pipe=preprocessing_pipe,
+            result=result,
+            model_type=model_type,
+        )
+
+    return result

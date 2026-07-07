@@ -1,0 +1,22 @@
+artifact_path: file:c:/Users/Asus/Desktop/python-coding/customer churn/notebooks/mlruns/1/models/m-6d6220fef6704b9a9f23220496fa4bfd/artifacts
+flavors:
+  catboost:
+    catboost_version: 1.2.10
+    code: null
+    data: model.cb
+    model_type: CatBoostClassifier
+    save_format: cbm
+  python_function:
+    data: model.cb
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.catboost
+    python_version: 3.13.9
+mlflow_version: 3.14.0
+model_id: m-6d6220fef6704b9a9f23220496fa4bfd
+model_size_bytes: 170536
+model_uuid: m-6d6220fef6704b9a9f23220496fa4bfd
+prompts: null
+run_id: 65273ab93d754a27a02280d09cce24b2
+utc_time_created: '2026-07-05 15:34:40.100013'

@@ -1,0 +1,138 @@
+{
+  "Ridge LR (L2)": {
+    "safe_name": "Ridge_LR__L2",
+    "model_type": "linear",
+    "model_class": "LogisticRegression",
+    "model_path": "Ridge_LR__L2.pkl",
+    "pipe_path": "Ridge_LR__L2_pipe.pkl",
+    "threshold": 0.57,
+    "metrics": {
+      "accuracy": 0.7608,
+      "precision": 0.5361,
+      "recall": 0.7353,
+      "f1": 0.6201,
+      "roc_auc": 0.8406,
+      "pr_auc": 0.6269
+    },
+    "train_time_s": 0.0241
+  },
+  "Lasso LR (L1)": {
+    "safe_name": "Lasso_LR__L1",
+    "model_type": "linear",
+    "model_class": "LogisticRegression",
+    "model_path": "Lasso_LR__L1.pkl",
+    "pipe_path": "Lasso_LR__L1_pipe.pkl",
+    "threshold": 0.57,
+    "metrics": {
+      "accuracy": 0.7608,
+      "precision": 0.5361,
+      "recall": 0.7353,
+      "f1": 0.6201,
+      "roc_auc": 0.8407,
+      "pr_auc": 0.6271
+    },
+    "train_time_s": 0.511
+  },
+  "Elastic Net LR": {
+    "safe_name": "Elastic_Net_LR",
+    "model_type": "linear",
+    "model_class": "LogisticRegression",
+    "model_path": "Elastic_Net_LR.pkl",
+    "pipe_path": "Elastic_Net_LR_pipe.pkl",
+    "threshold": 0.57,
+    "metrics": {
+      "accuracy": 0.7608,
+      "precision": 0.5361,
+      "recall": 0.7353,
+      "f1": 0.6201,
+      "roc_auc": 0.8406,
+      "pr_auc": 0.6269
+    },
+    "train_time_s": 0.4624
+  },
+  "Decision Tree": {
+    "safe_name": "Decision_Tree",
+    "model_type": "tree",
+    "model_class": "DecisionTreeClassifier",
+    "model_path": "Decision_Tree.pkl",
+    "pipe_path": "Decision_Tree_pipe.pkl",
+    "threshold": 0.6,
+    "metrics": {
+      "accuracy": 0.7615,
+      "precision": 0.5363,
+      "recall": 0.7513,
+      "f1": 0.6258,
+      "roc_auc": 0.8327,
+      "pr_auc": 0.6194
+    },
+    "train_time_s": 0.0253
+  },
+  "Random Forest": {
+    "safe_name": "Random_Forest",
+    "model_type": "tree",
+    "model_class": "RandomForestClassifier",
+    "model_path": "Random_Forest.pkl",
+    "pipe_path": "Random_Forest_pipe.pkl",
+    "threshold": 0.53,
+    "metrics": {
+      "accuracy": 0.7708,
+      "precision": 0.5478,
+      "recall": 0.7807,
+      "f1": 0.6439,
+      "roc_auc": 0.846,
+      "pr_auc": 0.657
+    },
+    "train_time_s": 4.037
+  },
+  "XGBoost": {
+    "safe_name": "XGBoost",
+    "model_type": "tree",
+    "model_class": "XGBClassifier",
+    "model_path": "XGBoost.pkl",
+    "pipe_path": "XGBoost_pipe.pkl",
+    "threshold": 0.55,
+    "metrics": {
+      "accuracy": 0.7637,
+      "precision": 0.5385,
+      "recall": 0.7674,
+      "f1": 0.6329,
+      "roc_auc": 0.8476,
+      "pr_auc": 0.664
+    },
+    "train_time_s": 0.3758
+  },
+  "LightGBM": {
+    "safe_name": "LightGBM",
+    "model_type": "tree",
+    "model_class": "LGBMClassifier",
+    "model_path": "LightGBM.pkl",
+    "pipe_path": "LightGBM_pipe.pkl",
+    "threshold": 0.51,
+    "metrics": {
+      "accuracy": 0.7566,
+      "precision": 0.5272,
+      "recall": 0.8021,
+      "f1": 0.6363,
+      "roc_auc": 0.8448,
+      "pr_auc": 0.6595
+    },
+    "train_time_s": 0.2709
+  },
+  "CatBoost": {
+    "safe_name": "CatBoost",
+    "model_type": "tree",
+    "model_class": "CatBoostClassifier",
+    "model_path": "CatBoost.pkl",
+    "pipe_path": "CatBoost_pipe.pkl",
+    "threshold": 0.54,
+    "metrics": {
+      "accuracy": 0.7601,
+      "precision": 0.5335,
+      "recall": 0.7674,
+      "f1": 0.6294,
+      "roc_auc": 0.8484,
+      "pr_auc": 0.669
+    },
+    "train_time_s": 1.2796
+  }
+}

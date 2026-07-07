@@ -173,5 +173,5 @@ def build_leaderboard(results: list[dict]) -> pd.DataFrame:
         )
         .reset_index(drop=True)
     )
-    lb.index += 1
+    lb.index += 1  # rank starts at 1 (rank 1 = highest recall)
     return lb
